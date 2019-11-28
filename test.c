@@ -6,6 +6,7 @@
 //-----------------------------------------------------------------------------------------------------------------------	
 
 #include <stm32f10x.h> 																		//Mikrocontrollertyp
+#include "coefficients.h"
 
 int main(void) 																						//Hauptprogramm
 {
@@ -66,14 +67,31 @@ int main(void) 																						//Hauptprogramm
 	}
 }
 
+volatile float nwert [FILTER_TAP_NUM];
+volatile size_t head = 0;
+
+
 //-----------------------------------------------------------------------------------------------------------------------	
 //Timer 3 Interrupt Handler
 //-----------------------------------------------------------------------------------------------------------------------	
 void TIM3_IRQHandler(void)
 {
 	ADC1->CR2 		|= 	(1<<0);																//start conversion
+
+	float sum;
+	for(int i = 0; i < FILTER_TAP_NUM; i++){
+		if((head-i) <= 0){
+			sum += nwert[FILTER_TAP_NUM - (i-head)] * filter_taps[i];		
+		}else{
+			sum += nwert[head - i] * filter_taps[i];		
+		}
+	}
+	
+
+	DAC->DHR12R1	=		sum;															//12-Bit Wert DAC=ADC											
+	DAC->SWTRIGR	|=	0x00000001;
 	TIM3->SR &= ~(1<<0);                    								// clear UIF flag
-}
+} 
 
 //-----------------------------------------------------------------------------------------------------------------------	
 //ADC Interrupt Handler
@@ -83,7 +101,10 @@ void ADC1_2_IRQHandler(void)
 //	GPIOE->ODR = (ADC1->DR)<<4;															//set LED aus 12Bit->16Bit->higher Byte anzeigen auf LED
 	GPIOE->ODR ^= 0xFFFF;																			//toggle LED -> messen sampling rate
 //ADC1->SR &= ~(1<<1); 																			//wird automatisch durch auslesen des Registers gelöscht
-	DAC->DHR12R1	=		(ADC1->DR);															//12-Bit Wert DAC=ADC											
-	DAC->SWTRIGR	|=	0x00000001;
+
+   nwert[head] = (ADC1->DR);
+	 head++;
+	 if(head >= FILTER_TAP_NUM)
+		 head = 0;
 }
 
