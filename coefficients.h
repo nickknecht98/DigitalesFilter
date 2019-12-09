@@ -12,7 +12,7 @@
 FIR filter designed with
 http://t-filter.appspot.com
 
-sampling frequency: 2000 Hz
+sampling frequency: 20000 Hz
 
 * 0 Hz - 400 Hz
   gain = 1
